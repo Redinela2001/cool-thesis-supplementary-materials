@@ -1,0 +1,180 @@
+# Appendix C: Python Code for BERT Fine-tuning and Embedding Generation
+
+# Purpose: This script outlines the core Python code used for the computational
+# analysis involving BERT, including environment setup for deep learning,
+# BERT model initialization, fine-tuning on annotated data, and generating
+# contextual embeddings for further analysis. This code is adapted from the
+# 'TheCoolLinguist (1).ipynb' Jupyter Notebook used for the study.
+
+# Environment and Data Setup for Reproducibility:
+# This script was developed with Python 3.11.
+# Required Python libraries and their approximate versions:
+#   - pandas (e.g., 2025.2) for data manipulation
+#   - numpy (e.g., 2.0.2) for numerical operations
+#   - tensorflow (e.g., 2.16.1) for GPU acceleration and deep learning operations
+#   - transformers (e.g., 4.51.3 from Hugging Face) for BERT models
+#   - sentence-transformers (e.g., 2.7.0) for efficient embedding generation
+#   - AugmentedSocialScientist (e.g., 3.0.0) for streamlined BERT fine-tuning
+#
+# These libraries can typically be installed via pip:
+# `pip install pandas numpy tensorflow transformers sentence-transformers AugmentedSocialScientist`
+#
+# Data Files: This script assumes that annotated and unannotated data files,
+# formatted as CSV or Excel, are present in the same directory as this script.
+# Specific file names (e.g., 'your_annotated_data.csv', 'your_unlabeled_corpus.csv')
+# should replace the placeholder loading comments below.
+#
+# For full reproducibility, all code and data files are available in the supplementary
+# online repository at: [Please insert your GitHub repository link here, e.g., https://github.com/yourusername/yourthesisrepo]
+
+# --- 1. Import Necessary Libraries ---
+# Core data science and machine learning libraries
+import pandas as pd
+import numpy as np
+import sys # Used for modifying system path if needed
+import tensorflow as tf # Google's machine learning framework, crucial for GPU/TPU
+
+# Hugging Face Transformers library for state-of-the-art NLP models like BERT
+import transformers
+
+# Specific import for AdamW optimizer, ensuring compatibility across transformer versions
+# This is a common "monkey patch" used in some notebooks to ensure the optimizer is found.
+print(f"Checking transformers version for AdamW compatibility: {transformers.__version__}")
+try:
+    from transformers.optimization import AdamW
+except ImportError:
+    # Fallback for older/different versions where AdamW might be in torch.optim
+    from torch.optim import AdamW
+# Apply the monkey patch to the transformers module if it was missing.
+# This makes sure other parts of the library can find AdamW correctly.
+sys.modules['transformers'].AdamW = AdamW
+
+# Import the custom Bert model from the AugmentedSocialScientist library.
+# This library provides a simplified interface for common NLP tasks for social scientists.
+try:
+    from augmentedsocialscientist.models import Bert
+    print("Successfully imported Bert model from AugmentedSocialScientist.")
+except ImportError:
+    print("Error: 'AugmentedSocialScientist' library or Bert model not found.")
+    print("Please ensure it is installed and accessible in your Python environment.")
+    # In an actual script, you might raise an exception or exit here.
+    pass # For appendix, we just print a message
+
+# --- 2. Activate GPU/TPU (for accelerated computation) ---
+# This section attempts to detect and set up an available GPU or TPU.
+# Running BERT models on accelerators significantly speeds up training and inference.
+try:
+    # Attempt to resolve a TPU cluster (Google's Tensor Processing Units)
+    tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
+    print(f'Running on TPU: {tpu.master()}')
+except ValueError:
+    # If TPU is not found, set it to None and proceed to check for GPU/CPU.
+    tpu = None
+
+if tpu:
+    # If a TPU is found, initialize it for TensorFlow distribution strategy.
+    tf.config.experimental_connect_to_cluster(tpu)
+    tf.tpu.experimental.initialize_tpu_system(tpu)
+    strategy = tf.distribute.experimental.TPUStrategy(tpu)
+    print("TPU available and initialized.")
+else:
+    # If no TPU, use the default distribution strategy, which handles CPU or single GPU.
+    strategy = tf.distribute.get_strategy()
+    print('TPU not available. Executing on CPU/GPU.')
+
+# Report the number of processing units (replicas) being used.
+print(f"Number of replicas: {strategy.num_replicas_in_sync}")
+
+# --- 3. Data Loading (Illustrative Placeholders) ---
+# In a real execution, you would load your specific datasets here.
+# For the purpose of this appendix, these are commented out placeholders.
+# Replace with your actual file paths and loading functions (e.g., pd.read_csv, pd.read_excel).
+
+# Example: Loading annotated data for fine-tuning the BERT model.
+# This data would contain text snippets and their corresponding human-annotated labels.
+# try:
+#     annotated_df = pd.read_csv("your_annotated_cool_data.csv")
+#     print("Annotated data loaded successfully for fine-tuning.")
+#     # Assuming columns like 'text' and 'label_id' for fine-tuning
+#     # train_texts, val_texts, train_labels, val_labels = train_test_split(...)
+# except FileNotFoundError:
+#     print("Warning: Annotated data file not found for fine-tuning example.")
+
+# Example: Loading a larger, unannotated corpus for generating embeddings post-fine-tuning.
+# This would be the full dataset where you want to apply BERT's learned knowledge.
+# try:
+#     full_corpus_df = pd.read_csv("your_full_unlabeled_corpus.csv")
+#     print("Full corpus data loaded successfully for embedding generation.")
+# except FileNotFoundError:
+#     print("Warning: Full corpus data file not found for embedding generation example.")
+
+
+# --- 4. BERT Model Initialization and Fine-tuning (Illustrative Placeholders) ---
+# This section demonstrates how a BERT model would be initialized and fine-tuned
+# using the 'AugmentedSocialScientist' library.
+
+# Initialize the Bert model. Parameters like 'model_name', 'num_labels', 'epochs',
+# 'learning_rate', and 'batch_size' are crucial for training.
+# 'model_name': Specifies the pre-trained BERT model (e.g., 'bert-base-uncased').
+# 'num_labels': Number of distinct categories in your classification task (e.g., 3 for Basic, Emotion, Nonliteral).
+# 'epochs': Number of passes through the entire training dataset.
+# 'learning_rate': Controls the step size during model weight updates.
+# 'batch_size': Number of samples processed before the model's parameters are updated.
+#
+# with strategy.scope(): # Essential for distributing training across multiple GPUs/TPUs
+#     model = Bert(
+#         model_name='bert-base-uncased',
+#         num_labels=3,
+#         epochs=4,
+#         learning_rate=2e-5,
+#         batch_size=16
+#     )
+#
+# # Prepare data for fine-tuning (e.g., splitting into training and validation sets).
+# # Replace 'your_text_column' and 'your_label_column' with actual column names from your DataFrame.
+# # train_texts = annotated_df['your_text_column'].tolist()
+# # train_labels = annotated_df['your_label_column'].tolist()
+# # (Similarly for validation data: val_texts, val_labels)
+#
+# # Execute the fine-tuning process. This step trains the BERT model on your specific task.
+# # model.fine_tune(
+# #     train_texts=train_texts,
+# #     train_labels=train_labels,
+# #     val_texts=val_texts,  # Optional, but highly recommended for monitoring performance
+# #     val_labels=val_labels
+# # )
+# print("\nConceptual placeholder: BERT model fine-tuning would occur here.")
+#
+# # After fine-tuning, the model might be saved for later use or deployment.
+# # model.save_model("path/to/save/fine_tuned_cool_bert_model")
+
+# --- 5. Contextual Embedding Generation (Illustrative Placeholders) ---
+# This section demonstrates how to generate dense numerical representations (embeddings)
+# for sentences using a pre-trained or fine-tuned model. These embeddings capture
+# the contextual meaning of the text.
+
+# Option 1: Using SentenceTransformer for general-purpose embeddings (if not using fine-tuned Bert directly)
+# This is often used to get high-quality sentence embeddings without explicit fine-tuning for classification.
+# from sentence_transformers import SentenceTransformer
+#
+# # Load a pre-trained SentenceTransformer model. 'all-MiniLM-L6-v2' is a common choice for efficiency.
+# embedder_model = SentenceTransformer('all-MiniLM-L6-v2')
+#
+# # Prepare sentences from your full corpus for embedding.
+# # sentences_to_embed = full_corpus_df['your_text_column_for_embedding'].tolist()
+#
+# # Generate embeddings. 'show_progress_bar=True' provides visual feedback during embedding generation.
+# # sentence_embeddings = embedder_model.encode(sentences_to_embed, show_progress_bar=True)
+#
+# print("\nConceptual placeholder: Contextual embeddings would be generated here.")
+#
+# # The generated embeddings (a NumPy array) can then be saved or converted for further analysis (e.g., MCA).
+# # np.save("cool_sentence_embeddings.npy", sentence_embeddings)
+# # pd.DataFrame(sentence_embeddings).to_csv("cool_sentence_embeddings.csv", index=False)
+
+# Option 2: Extracting embeddings directly from the fine-tuned BERT model (if supported by AugmentedSocialScientist API)
+# This would typically involve a specific method within the 'model' object to get the last hidden states or pooled outputs.
+# (Consult AugmentedSocialScientist documentation for exact method if this is desired).
+#
+# final_embeddings = model.get_embeddings(full_corpus_df['your_text_column'].tolist())
+# print("Conceptual placeholder: Embeddings extracted from fine-tuned BERT model.")
